@@ -46,11 +46,11 @@ void BTreeNode::add_node(int val, bool visible)
 	}
 }
 
-void BTreeNode::delete_node(int val, bool visible)
-{
+void BTreeNode::delete_node(int val, bool visible, BTreeNode** ptr_to_root) // We need a pointer to root to track if it's deleted.
+{																			// if it is, then change the root pointer.
 	if (visible)
-		std::cout << "Adding: " << val << std::endl;
-
+		std::cout << "Deleting: " << val << std::endl;
+	
 	if (val == value)
 	{
 		if (left != nullptr) // If I have child nodes to the left,
@@ -64,13 +64,13 @@ void BTreeNode::delete_node(int val, bool visible)
 			}							// Now if my left child is NOT A LEAF!
 			else						// If my left child HAS right subtree, then swap with biggest
 			{							// of them. Now I need to cut off IT'S PARENTS RIGHT node, since
-				BTreeNode* ptr = findUpTo(value); // it is on the very right to my left subtree.
+				BTreeNode* ptr = left->findUpTo(value); // it is on the very right to my left subtree.
 				value = ptr->value;
 				ptr->parent->right = nullptr;
 				delete ptr;
 			}
 		}
-		else if (right != nullptr)		// If I don't have smaller childs, I can just swap with first bigger
+		else if (right != nullptr)		// If I don't have smaller (left) childs, I can just swap with first bigger
 		{								// node. Just swap with child on the left, then delete it. done.
 			BTreeNode* ptr = right;
 			value = ptr->value;
@@ -78,14 +78,75 @@ void BTreeNode::delete_node(int val, bool visible)
 			right = ptr->right;
 			delete ptr;
 		}
+		else							// If this is a leaf, then search if it's left or right child of your parent.
+		{								// There is no swapping here. Just deletion, as it's well... a leaf.
+
+			if (parent == nullptr)      // When only 1 node left, root is a leaf, so just delete it. It does not have parents.
+			{
+				*ptr_to_root = nullptr; // Root pointer cannot point to deleted memory, so we set it here.
+				delete this;
+			}
+			else
+			{
+				if (parent->left != nullptr)
+				{
+					if (parent->left == this)
+					{
+						parent->left = nullptr;
+					}
+
+				}
+				else if (parent->right != nullptr)
+				{
+					if (parent->right == this)
+					{
+						parent->right = nullptr;
+					}
+				}
+				delete this;
+			}
+		}
 	}
 	else if (val < value)
 	{
 		left->delete_node(val);
 	}
-	else if (val >= value)
+	else if (val > value)
 	{
 		right->delete_node(val);
+	}
+}
+
+void BTreeNode::delete_everything()
+{
+	if (left != nullptr)
+	{
+		left->delete_everything();
+	}
+	if (right != nullptr)
+	{
+		right->delete_everything();
+	}
+
+	if (left == nullptr && right == nullptr)
+	{
+		if (parent != nullptr)
+		{
+			if (parent->left == this)
+			{
+				parent->left = nullptr;
+				delete this;
+			}
+			else if (parent->right == this)
+			{
+				parent->right = nullptr;
+				delete this;
+			}
+		}
+		else
+		{
+			delete this; // No giving pointer this time as we can do it in AVLTree method instead.
+		}
 	}
 }
 
@@ -353,16 +414,39 @@ AVLTree::AVLTree(int root_value)
 	root = new BTreeNode(nullptr, root_value);
 }
 
+AVLTree::~AVLTree()
+{
+	if (root != nullptr)
+	{
+		root->delete_everything();
+		root = nullptr;
+	}
+}
+
 void AVLTree::add_val(int val, bool visible)
 {
-	root->add_node(val, visible);
+	if (root == nullptr)
+		root = new BTreeNode(nullptr, val);
+	else
+		root->add_node(val, visible);
+	
 	updateTree(visible);
 }
 
 void AVLTree::delete_val(int val, bool visible)
 {
-	root->delete_node(val, visible);
-	updateTree(visible);
+	if (root != nullptr)
+	{
+		root->delete_node(val, visible, &root);
+	}
+	if (root != nullptr) // You may have deleted the root, so don't update anything, when there is technically no tree.
+	{
+		updateTree(visible);
+	}
+	if (root == nullptr && visible == true)
+	{
+		std::cout << "Deleted root!" << std::endl;
+	}
 }
 
 BTreeNode* AVLTree::find(int val, bool visible)
@@ -393,7 +477,6 @@ bool AVLTree::updateTree(bool visible)
 		root->height = root->get_height();
 		root->calcBalance();
 		root->findImbalance(&lastOccur, visible);
-		showTree();
 	} 
 	return true;
 }

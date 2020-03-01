@@ -4,17 +4,9 @@
 #include <memory>
 #include <algorithm>
 
-
-enum class eRotation
-{
-	RR,
-	LL,
-	RL,
-	LR
-};
-
 struct BTreeNode
 {
+	friend class AVLTree;
 	BTreeNode() = delete;
 	BTreeNode(BTreeNode* parent_, int value_);
 	BTreeNode* left;
@@ -24,7 +16,8 @@ struct BTreeNode
 	unsigned int height;
 	short balance;
 	void add_node(int val, bool visible = false);
-	void delete_node(int val, bool visible = false);
+	void delete_node(int val, bool visible = false, BTreeNode** ptr_to_node = nullptr);
+	void delete_everything();
 	void showSubTree();
 	void calcBalance();
 	unsigned int get_height();
@@ -47,6 +40,7 @@ class AVLTree
 public:
 	AVLTree() = delete;
 	AVLTree(int root_value);
+	~AVLTree();
 
 	void add_val(int val, bool visible = false);
 	void delete_val(int val, bool visible = false);
@@ -57,5 +51,6 @@ public:
 private:
 	BTreeNode* root;
 	BTreeNode* lastOccur; // Last occurance of disbalance in the tree. Is nullptr if tree is balanced.
+	bool isRootAvailable; // Root may be deleted as any other node.
 };
 
